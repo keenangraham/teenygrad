@@ -1,34 +1,97 @@
 # inspired by https://github.com/karpathy/micrograd/blob/master/micrograd/engine.py
+
 from __future__ import annotations
-import time, math
-from typing import List, Tuple, Callable, Optional, ClassVar, Type, Union, Sequence, Any, Iterable, Set
-from collections import defaultdict
-from functools import partialmethod, reduce
-from itertools import accumulate
+
+import math
+
+import time
+
 import numpy as np
 
-from teenygrad.helpers import ImageDType, argfix, make_pair, getenv, IMAGE, DEBUG, flatten, DType, dtypes, prod, all_int, round_up
+from collections import defaultdict
+
+from functools import partialmethod
+from functools import reduce
+
+from itertools import accumulate
+
+
+from teenygrad.helpers import ImageDType
+from teenygrad.helpers import argfix
+from teenygrad.helpers import make_pair
+from teenygrad.helpers import getenv
+from teenygrad.helpers import IMAGE
+from teenygrad.helpers import DEBUG
+from teenygrad.helpers import flatten
+from teenygrad.helpers import DType
+from teenygrad.helpers import dtypes
+from teenygrad.helpers import prod
+from teenygrad.helpers import all_int
+from teenygrad.helpers import round_up
+
+
 from teenygrad.lazy import LazyBuffer
-from teenygrad.ops import Device, LoadOps
+
+from teenygrad.ops import Device
+from teenygrad.ops import LoadOps
+
 from teenygrad.shape.symbolic import sint
+
 from teenygrad.realize import run_schedule
 
+from typing import List
+from typing import Tuple
+from typing import Callable
+from typing import Optional
+from typing import ClassVar
+from typing import Type
+from typing import Union
+from typing import Sequence
+from typing import Any
+from typing import Iterable
+from typing import Set
+
+
+
 class Function:
-  def __init__(self, device:str, *tensors:Tensor):
-    self.device = device
-    self.needs_input_grad = [t.requires_grad for t in tensors]
-    self.requires_grad = True if any(self.needs_input_grad) else None if None in self.needs_input_grad else False
-    if self.requires_grad: self.parents = tensors
 
-  def forward(self, *args, **kwargs): raise NotImplementedError(f"forward not implemented for {type(self)}")
-  def backward(self, *args, **kwargs): raise RuntimeError(f"backward not implemented for {type(self)}")
+    def __init__(
+        self,
+        device: str,
+        *tensors: Tensor,
+    ):
+        self.device = device
+        self.needs_input_grad = [
+            t.requires_grad
+            for t in tensors
+        ]
+        self.requires_grad = self._requires_grad()
+        if self.requires_grad:
+            self.parents = tensors
 
-  @classmethod
-  def apply(fxn:Type[Function], *x:Tensor, **kwargs) -> Tensor:
-    ctx = fxn(x[0].device, *x)
-    ret = Tensor(ctx.forward(*[t.lazydata for t in x], **kwargs), device=ctx.device, requires_grad=ctx.requires_grad)
-    if ctx.requires_grad and not Tensor.no_grad: ret._ctx = ctx    # used by autograd engine
-    return ret
+    def _requires_grad(self):
+        if any(self.needs_input_grad):
+            return True
+        if None in self.needs_input_grad:
+            return None
+        return False
+
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError(f'forward not implemented for {type(self)}')
+
+    def backward(self, *args, **kwargs):
+        raise RuntimeError(f'backward not implemented for {type(self)}')
+
+    @classmethod
+    def apply(
+        fxn: Type[Function],
+        *x: Tensor,
+        **kwargs: Any[str: Any],
+    ) -> Tensor:
+        ctx = fxn(x[0].device, *x)
+        ret = Tensor(ctx.forward(*[t.lazydata for t in x], **kwargs), device=ctx.device, requires_grad=ctx.requires_grad)
+        if ctx.requires_grad and not Tensor.no_grad: ret._ctx = ctx    # used by autograd engine
+        return ret
 
 import teenygrad.mlops as mlops
 
