@@ -89,13 +89,24 @@ class Function:
         **kwargs: Any[str: Any],
     ) -> Tensor:
         ctx = fxn(x[0].device, *x)
-        ret = Tensor(ctx.forward(*[t.lazydata for t in x], **kwargs), device=ctx.device, requires_grad=ctx.requires_grad)
-        if ctx.requires_grad and not Tensor.no_grad: ret._ctx = ctx    # used by autograd engine
+        ret = Tensor(
+            ctx.forward(
+                *[
+                    t.lazydata
+                    for t in x
+                ],
+                **kwargs
+            ),
+            device=ctx.device,
+            requires_grad=ctx.requires_grad
+        )
+        if ctx.requires_grad and not Tensor.no_grad:
+            ret._ctx = ctx  # used by autograd engine
         return ret
+
 
 import teenygrad.mlops as mlops
 
-# **** start with two base classes, Tensor and Function ****
 
 class Tensor:
   __slots__ = "lazydata", "requires_grad", "grad", "_ctx"
